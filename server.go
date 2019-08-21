@@ -3,7 +3,7 @@ package main
 import (
 	//gin framwork
 	"github.com/gin-gonic/gin"
-	"github.com/gin-contrib"
+	// "github.com/gin-contrib"
 
 	//http
 	"net/http"
@@ -61,10 +61,12 @@ type Customer struct {
 func (h *CustomerHandler) Initialize() {
 	// "user:password@/dbname?charset=utf8&parseTime=True&loc=Local
 	// db, err := gorm.Open("mysql", "root:best1459900574821@dbname?charset=utf8&parseTime=True&loc=Local")
-	db, err := gorm.Open("mysql", "root:best1459900574821@tcp(127.0.0.1:3306)/charset1")	
+	db, err := gorm.Open("mysql", "root:best1459900574821@tcp(127.0.0.1:3306)/charset")	
 	if err != nil {
-		log.Error().Str("functionName", "GetCustomer").Msg("Connect Database Fail Error : "+err.Error())
+		log.Error().Str("Database", "Initialize").Msg("Connect MYSQL Database Fail Error : "+err.Error())
 	}
+
+	log.Info().Str("Database", "Initialize").Msg("Connect Database Success root : best1459900574821@tcp(127.0.0.1:3306)/charset")
 
 	db.AutoMigrate(&Customer{})
 	h.DB = db
@@ -110,7 +112,6 @@ func (rc *MyReadCloser) Close() error {
 func DebugLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// log.Println(c.Request.RequestURI)
-		log.Debug().Str("middleware", "DebugLogger").Msg("path="+c.Request.RequestURI)
 
 		if c.Request.Method == http.MethodPost {
 			var buf bytes.Buffer
@@ -190,7 +191,7 @@ func setupRouter() *gin.Engine {
 	// Add a logger middleware, which:
 	//   - Logs all requests, like a combined access and error log.
 	//   - Logs to stdout.
-	app.Use(logger.SetLogger() )
+
 
 	//mysql
 	system := CustomerHandler{}
@@ -203,6 +204,8 @@ func setupRouter() *gin.Engine {
 	app.PUT("/customers/:id", system.UpdateCustomer)
 	app.DELETE("/customers/:id", system.DeleteCustomer)
 
+	// app.Use(logger.SetLogger() )
+
 	return app
 }
 
@@ -213,7 +216,8 @@ func setupRouter() *gin.Engine {
 */
 
 func (h *CustomerHandler) GetAllCustomer(c *gin.Context) {
-	log.Info().Str("functionName", "GetAllCustomer").Msg("request function")
+	log.Info().Str("functionName", "GetAllCustomer").Msg("Request Function")
+	log.Debug().Msg("path="+c.Request.RequestURI)
 
 	customers := []Customer{}
 
@@ -225,29 +229,32 @@ func (h *CustomerHandler) GetAllCustomer(c *gin.Context) {
 func (h *CustomerHandler) GetCustomer(c *gin.Context) {
 	log.Debug().Str("method", "GET").Msg("param="+c.Param("id"))
 
-	log.Info().Str("functionName", "GetCustomer").Msg("request function")
+	log.Info().Str("functionName", "GetCustomer").Msg("Request Function")
+	log.Debug().Msg("path="+c.Request.RequestURI)
 
 	id := c.Param("id")
 	customer := Customer{}
 
 	if err := h.DB.Find(&customer, id).Error; err != nil {
-		Msg := "Not Found id:"+id+" on Database Error: "+err.Error()// err.Error() conv to string
+		Msg := "CodeStarus:404 Not Found id:"+id+" on Database Error: "+err.Error()// err.Error() conv to string
 		log.Error().Str("functionName", "GetCustomer").Msg(Msg)
 		c.JSON(http.StatusNotFound,Msg)
 		return
 	}
 
+	log.Info().Str("functionName", "GetCustomer").Msg("CodeStarus:200 Request Success")
 	c.JSON(http.StatusOK, customer)
 }
 
 func (h *CustomerHandler) SaveCustomer(c *gin.Context) {
-	log.Info().Str("functionName", "SaveCustomer").Msg("request function")
+	log.Info().Str("functionName", "SaveCustomer").Msg("Request Function")
+	log.Debug().Msg("path="+c.Request.RequestURI)
 
 	customer := Customer{}
 
 	if err := c.ShouldBindJSON(&customer); err != nil {
-		Msg := "Bind JSON Fail Error: "+err.Error()// err.Error() conv to string
-		log.Error().Str("functionName", "SaveCustomer").Msg("Bind JSON Fail Error: "+err.Error())
+		Msg := "CodeStarus:400 BadRequest "+err.Error()// err.Error() conv to string
+		log.Error().Str("functionName", "SaveCustomer").Msg(Msg)
 		c.JSON(http.StatusBadRequest,Msg)
 		return
 	}
@@ -260,27 +267,29 @@ func (h *CustomerHandler) SaveCustomer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest,Msg)
 	}
 
+	log.Info().Str("functionName", "SaveCustomer").Msg("CodeStarus:200 Request Success")
 	c.JSON(http.StatusOK, customer)
 }
 
 func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	log.Debug().Str("method", "PUT").Msg("param="+c.Param("id"))
 
-	log.Info().Str("functionName", "UpdateCustomer").Msg("request function")
+	log.Info().Str("functionName", "UpdateCustomer").Msg("Request Function")
+	log.Debug().Msg("path="+c.Request.RequestURI)
 
 	id := c.Param("id")
 	customer := Customer{}
 
 	if err := h.DB.Find(&customer, id).Error; err != nil {
-		Msg := "Not Found id:"+id+" on Database Error: "+err.Error()// err.Error() conv to string
+		Msg := "CodeStarus:404 Not Found id:"+id+" on Database Error: "+err.Error()// err.Error() conv to string
 		log.Error().Str("functionName", "UpdateCustomer").Msg(Msg)
 		c.JSON(http.StatusNotFound,Msg)
 		return
 	}
 
 	if err := c.ShouldBindJSON(&customer); err != nil {
-		Msg := "Bind JSON Fail Error: "+err.Error()// err.Error() conv to string
-		log.Error().Str("functionName", "UpdateCustomer").Msg("Bind JSON Fail Error: "+err.Error())
+		Msg := "CodeStarus:400 BadRequest "+err.Error()// err.Error() conv to string
+		log.Error().Str("functionName", "UpdateCustomer").Msg(Msg)
 		c.JSON(http.StatusBadRequest,Msg)
 		return
 	}
@@ -292,6 +301,7 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 		return
 	}
 	
+	log.Info().Str("functionName", "UpdateCustomer").Msg("CodeStarus:200 Request Success")
 	c.JSON(http.StatusOK, customer)
 }
 
@@ -299,13 +309,14 @@ func (h *CustomerHandler) DeleteCustomer(c *gin.Context) {
 
 	log.Debug().Str("method", "DELETE").Msg("param="+c.Param("id"))
 
-	log.Info().Str("functionName", "DeleteCustomer").Msg("request function")
+	log.Info().Str("functionName", "DeleteCustomer").Msg("Request Function")
+	log.Debug().Msg("path="+c.Request.RequestURI)
 
 	id := c.Param("id")
 	customer := Customer{}
 
 	if err := h.DB.Find(&customer, id).Error; err != nil {
-		Msg := "Not Found id:"+id+" on Database Error: "+err.Error()// err.Error() conv to string
+		Msg := "CodeStarus:404 Not Found id:"+id+" on Database Error: "+err.Error()// err.Error() conv to string
 		log.Error().Str("functionName", "DeleteCustomer").Msg(Msg)
 		c.JSON(http.StatusNotFound,Msg)
 		return
@@ -318,6 +329,7 @@ func (h *CustomerHandler) DeleteCustomer(c *gin.Context) {
 		return
 	}
 
+	log.Info().Str("functionName", "DeleteCustomer").Msg("CodeStarus:200 Request Success")
 	c.Status(http.StatusNoContent)
 }
 
