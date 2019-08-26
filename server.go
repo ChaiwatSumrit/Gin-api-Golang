@@ -26,9 +26,12 @@ import (
 	"context"
 	"fmt"
 	"log"
-
+	"strconv"
 	//uuid
 	"os/exec"
+
+	//runtime
+	"runtime"
 )
 
 /* 	
@@ -47,8 +50,8 @@ func main(){
     if err != nil {
         log.Fatal(err)
 	}
-	fmt.Printf("ACTOR : %s", ACTOR)
-	fmt.Printf("UUIR_LOGS : %s", UUIR_LOGS)
+	fmt.Printf("ACTOR : %s\n", ACTOR)
+	fmt.Printf("UUIR_LOGS : %s\n", UUIR_LOGS)
 	
 	// Example skip path request.
 	app := setupRouter()
@@ -115,14 +118,18 @@ func (h *CustomerHandler) InitializeMongoDB() {
     clientOptions := options.Client().ApplyURI(mongoURI)
     client, err := mongo.Connect(ctx, clientOptions)
     if err != nil {
-		go Logger("FATAL","Admin" ,"sample_server", "", "InitializeMongoDB", err.Error(), "", h.Channel)
+		_, file, line, _ := runtime.Caller(1)
+		message := "["+file+"]["+strconv.Itoa(line) +"] : "+err.Error()
+		go Logger("FATAL","Admin" ,"sample_server", "", "InitializeMongoDB", message, "", h.Channel)
         os.Exit(1)
     }
 
     err = client.Ping(ctx, nil)
     if err != nil {
-		go Logger("FATAL","Admin" ,"sample_server", "", "InitializeMongoDB", err.Error(), "", h.Channel)
-        os.Exit(1)
+		_, file, line, _ := runtime.Caller(1)
+		message := "["+file+"]["+strconv.Itoa(line) +"] : "+err.Error()
+		go Logger("FATAL","Admin" ,"sample_server", "", "InitializeMongoDB", message, "", h.Channel)        
+		os.Exit(1)
 	}
 	
 	collection := client.Database("logistics").Collection("customer")
@@ -219,6 +226,8 @@ func setupRouter() *gin.Engine {
 	app.Use(system.LoggerPayload())
 
 	// result := make(chan string)
+
+	log.SetFlags(log.Lshortfile)
 	go Logger("INFO",ACTOR , "sample_server", "", "setupRouter", "Start API Server localhost:8080", "", system.Channel)
 
 	//app router
@@ -248,12 +257,20 @@ func (h *CustomerHandler) GetAllCustomer(c *gin.Context) {
 
     cur, err := h.Collection.Find(context.TODO(), bson.M{})
     if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		message := "["+file+"]["+strconv.Itoa(line) +"] : Error on Finding all the documents "+err.Error()
+		go Logger("FATAL","Admin" ,"sample_server", "", "GetAllCustomer", message, "", h.Channel)
+
         log.Fatal("Error on Finding all the documents", err)
     }
     for cur.Next(context.TODO()) {
         var customer Customer
         err = cur.Decode(&customer)
         if err != nil {
+			_, file, line, _ := runtime.Caller(1)
+			message := "["+file+"]["+strconv.Itoa(line) +"] : Error on Decoding the document "+err.Error()
+			go Logger("FATAL","Admin" ,"sample_server", "", "GetAllCustomer", message, "", h.Channel)
+
             log.Fatal("Error on Decoding the document", err)
         }
         customers = append(customers, &customer)
@@ -295,19 +312,22 @@ func (h *CustomerHandler) SaveCustomer(c *gin.Context) {
 
 
 	if err := c.ShouldBindJSON(&customer); err != nil {
-		Msg := "Msg='CodeStarus:400 BadRequest "+err.Error()+"'"// err.Error() conv to string
-		go Logger("ERROR",ACTOR , "sample_server", "POST", "SaveCustomer", "BadRequest "+err.Error(), "400", h.Channel)
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "["+file+"]["+strconv.Itoa(line) +"] : BadRequest "+err.Error()	
+		go Logger("ERROR",ACTOR , "sample_server", "POST", "SaveCustomer", message, "400", h.Channel)
 
-		c.JSON(http.StatusBadRequest,Msg)
+		c.JSON(http.StatusBadRequest,message)
 		return
 	}
 
-	_, err := h.Collection.InsertOne(context.TODO(), customer)
+	_ , err := h.Collection.InsertOne(context.TODO(), customer)
 	if err != nil {
-		Msg := "Msg='Insert Database Fail Error: "+err.Error()+"'"// err.Error() conv to string
-		go Logger("ERROR",ACTOR , "sample_server", "POST", "SaveCustomer", "Insert Database Fail Error: "+err.Error(), "400", h.Channel)
+		_, file, line, _ := runtime.Caller(1)
+		message := "["+file+"]["+strconv.Itoa(line) +"] : Insert Database Fail"+err.Error()	
+		go Logger("ERROR",ACTOR , "sample_server", "POST", "SaveCustomer", message, "400", h.Channel)
 
-		c.JSON(http.StatusBadRequest,Msg)
+		c.JSON(http.StatusBadRequest,message)
 	}
 
 	go Logger("INFO",ACTOR , "sample_server", "POST", "SaveCustomer", "Request Success:", "200", h.Channel)
@@ -333,10 +353,10 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	// }
 
 	if err := c.ShouldBindJSON(&customer); err != nil {
-		Msg := "Msg='CodeStarus:400 BadRequest "+err.Error()+"'"// err.Error() conv to string
-		go Logger("ERROR",ACTOR , "sample_server", "PUT", "UpdateCustomer", "Insert Database Fail Error: "+err.Error(), "400", h.Channel)
-
-		c.JSON(http.StatusBadRequest,Msg)
+		_, file, line, _ := runtime.Caller(1)
+		message := "["+file+"]["+strconv.Itoa(line) +"] : BadRequest "+err.Error()
+		go Logger("ERROR",ACTOR , "sample_server", "POST", "SaveCustomer", message, "400", h.Channel)
+		c.JSON(http.StatusBadRequest,message)
 		return
 	}
 

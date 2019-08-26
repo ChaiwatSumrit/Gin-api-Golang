@@ -34,7 +34,6 @@ func Logger(level string, actor string,component string, requestMethod string, f
 	timestamp := time.Now().In(timeZone)
 
 	loggerAsJson := LoggerModel{
-
 		Timestamp		:timestamp.Format(time.RFC3339),
 		Actor			:strings.ToLower(actor),
 		Component		:component,
@@ -55,23 +54,23 @@ func Logger(level string, actor string,component string, requestMethod string, f
 
 	case "INFO":
 		loggerAsJson.Level = "INFO"
-		fmt.Printf(`%s %s "%s" "actor":"%s" "component":"%s" "function":"%s" %s %s`+"\n",
+		fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s %s`+"\n",
 		 loggerAsJson.Level, loggerAsJson.Timestamp, message , loggerAsJson.Actor, component, functionName, requestMethod, codeStatus)	
 	case "DEBUG":
 		loggerAsJson.Level = "DEBUG"
-		fmt.Printf(`%s %s "%s" "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
+		fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
 		 loggerAsJson.Level, loggerAsJson.Timestamp, message , loggerAsJson.Actor, component, functionName, requestMethod, codeStatus)
 	case "ERROR":
 		loggerAsJson.Level = "ERROR"
-		fmt.Printf(`%s %s "%s" "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
+		fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
 		 loggerAsJson.Level, loggerAsJson.Timestamp, message , loggerAsJson.Actor, component, functionName, requestMethod, codeStatus)
 	case "WANNING":
 		loggerAsJson.Level = "WANNING"
-		fmt.Printf(`%s %s "%s" "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
+		fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
 		 loggerAsJson.Level, loggerAsJson.Timestamp, message , loggerAsJson.Actor, component, functionName, requestMethod, codeStatus)
 	case "FATAL":
 		loggerAsJson.Level = "FATAL"
-		fmt.Printf(`%s %s "%s" "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
+		fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
 		 loggerAsJson.Level, loggerAsJson.Timestamp, message , loggerAsJson.Actor, component, functionName, requestMethod, codeStatus)
 	
 	}
@@ -105,7 +104,6 @@ func Logger(level string, actor string,component string, requestMethod string, f
 //     // if err != nil {
 //     //     panic(err)
 // 	// }
-	
 // 	res, _ := client.Do(req)
 
 // 	// if err != nil {
