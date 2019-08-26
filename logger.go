@@ -48,19 +48,19 @@ func Logger(level string,component string, requestMethod string, functionName st
 
 	case "INFO":
 		loggerAsJson.Level = "INFO"
-		fmt.Printf(`"Timestamp":"%s" "level":"%s" "component":"%s" "method":"%s" "function:"%s" "message:"%s" "status":"%s"`+"\n",
+		fmt.Printf(`"%s" "%s" "component":"%s" "method":"%s" "function:"%s" "message:"%s" "status":"%s"`+"\n",
 		loggerAsJson.Timestamp, loggerAsJson.Level, component, requestMethod, functionName, message, codeStatus)	
 	case "DEBUG":
 		loggerAsJson.Level = "DEBUG"
-		fmt.Printf(`"Timestamp":"%s" "level":"%s" "component":"%s" "method":"%s" "function:"%s" "message:"%s" "status":"%s"`+"\n",
+		fmt.Printf(`"%s" "%s" "component":"%s" "method":"%s" "function:"%s" "message:"%s" "status":"%s"`+"\n",
 		loggerAsJson.Timestamp, loggerAsJson.Level, component, requestMethod, functionName, message, codeStatus)
 	case "ERROR":
 		loggerAsJson.Level = "ERROR"
-		fmt.Printf(`"Timestamp":"%s" "level":"%s" "component":"%s" "method":"%s" "function:"%s" "message:"%s" "status":"%s"`+"\n",
+		fmt.Printf(`"%s" "%s" "component":"%s" "method":"%s" "function:"%s" "message:"%s" "status":"%s"`+"\n",
 		loggerAsJson.Timestamp, loggerAsJson.Level, component, requestMethod, functionName, message, codeStatus)
 	case "WANNING":
 		loggerAsJson.Level = "WANNING"
-		fmt.Printf(`"Timestamp":"%s" "level":"%s" "component":"%s" "method":"%s" "function:"%s" "message:"%s" "status":"%s"`+"\n",
+		fmt.Printf(`"%s" "%s" "component":"%s" "method":"%s" "function:"%s" "message:"%s" "status":"%s"`+"\n",
 		loggerAsJson.Timestamp, loggerAsJson.Level, component, requestMethod, functionName, message, codeStatus)
 	}
 	// LoggerDriving(loggerAsJson)
