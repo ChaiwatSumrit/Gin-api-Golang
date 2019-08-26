@@ -10,14 +10,22 @@ import (
 	"net/http"
 
 	//mysql lib
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
+	// "github.com/jinzhu/gorm"
+	// _ "github.com/jinzhu/gorm/dialects/mysql"
+
+	//mongo
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
 
 	
 	// "flag"
-
+	"os"
 	"io"
 	"bytes"
+	"context"
+	"fmt"
+	"log"
 )
 
 /* 	
@@ -45,29 +53,96 @@ func main(){
 
 //MODEL
 type Customer struct {
-	Id        uint   `gorm:"primary_key" json:"id"`
+	
+	Id        uint   `json:"_id"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
 	Age       int    `json:"age"`
 	Email     string `json:"email"`
 }
 
-func (h *CustomerHandler) Initialize() {
-	// "user:password@/dbname?charset=utf8&parseTime=True&loc=Local
-	// db, err := gorm.Open("mysql", "root:best1459900574821@dbname?charset=utf8&parseTime=True&loc=Local")
-	db, err := gorm.Open("mysql", "root:best1459900574821@tcp(127.0.0.1:3306)/charset")	
-	if err != nil {
-		Logger("ERROR", "sample_server", "", "Initialize", "Connect MYSQL Database Fail Error :"+err.Error(), "")
-	}
-	Logger("INFO", "sample_server", "", "Initialize", "Connect Database Success root : best1459900574821@tcp(127.0.0.1:3306)/charset", "")
+func (h *CustomerHandler) InitializeMYSQL() {
+// 	// "user:password@/dbname?charset=utf8&parseTime=True&loc=Local
+// 	// db, err := gorm.Open("mysql", "root:best1459900574821@dbname?charset=utf8&parseTime=True&loc=Local")
+// 	db, err := gorm.Open("mysql", "root:best1459900574821@tcp(127.0.0.1:3306)/charset")	
+// 	if err != nil {
+// 		Logger("ERROR", "sample_server", "", "InitializeMYSQL", "Connect MYSQL Database Fail Error :"+err.Error(), "")
+// 	}
+// 	Logger("INFO", "sample_server", "", "InitializeMYSQL", "Connect Database Success root : best1459900574821@tcp(127.0.0.1:3306)/charset", "")
 
-	db.AutoMigrate(&Customer{})
-	h.DB = db
+// 	db.AutoMigrate(&Customer{})
+// 	h.DB = db
 }
 	
 
 type CustomerHandler struct {
-	DB *gorm.DB
+	Collection *mongo.Collection
+	
+}
+
+
+/* 	
+	########################################################################################################
+	############################################## MONGO DB ################################################
+	########################################################################################################
+*/	
+
+//mongodb+srv://development:<password>@clustermaster-zvis2.mongodb.net/test?retryWrites=true&w=majority
+//ZGFMzUvDJ745GFDq
+var username = "development"
+var host = "clustermaster-zvis2.mongodb.net/test?retryWrites=true&w=majority"  // of the form foo.mongodb.net
+
+func (h *CustomerHandler) InitializeMongoDB() {
+
+	ctx := context.TODO()
+	pw	:= "ZGFMzUvDJ745GFDq"
+
+    // pw, ok := os.LookupEnv("MONGO_PW")
+    // if !ok {
+    //     fmt.Println("error: unable to find MONGO_PW in the environment")
+    //     os.Exit(1)
+	// }
+	
+    mongoURI := fmt.Sprintf("mongodb+srv://%s:%s@%s", username, pw, host)
+    fmt.Println("connection string is:", mongoURI)
+
+    // Set client options and connect
+    clientOptions := options.Client().ApplyURI(mongoURI)
+    client, err := mongo.Connect(ctx, clientOptions)
+    if err != nil {
+        fmt.Println(err)
+        os.Exit(1)
+    }
+
+    err = client.Ping(ctx, nil)
+    if err != nil {
+        fmt.Println(err)
+        os.Exit(1)
+	}
+	
+	collection := client.Database("logistics").Collection("customer")
+
+	// indexName, err2 := collection.Indexes().CreateOne(
+	// 	context.Background(),
+	// 	IndexModel{
+	// 		Keys   : bsonx.Doc{{"id", bsonx.Int32(1)}},
+	// 		Options: options.Index().SetUnique(true),
+	// 	},
+	// )
+	// if err2 != nil {
+    //     fmt.Println(err)
+    //     os.Exit(1)
+	// }
+	
+	h.Collection = collection
+	// err = client.Disconnect(context.TODO())
+
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Println("Connection to MongoDB closed.")
+	
+    fmt.Println("Connected to MongoDB!")
 }
 
 /* 	
@@ -147,7 +222,9 @@ func setupRouter() *gin.Engine {
 
 	//mysql
 	system := CustomerHandler{}
-	system.Initialize()
+	// system.InitializeMYSQL()
+
+	system.InitializeMongoDB()
 
 	//app router
 	app.GET("/customers", system.GetAllCustomer)
@@ -172,9 +249,25 @@ func (h *CustomerHandler) GetAllCustomer(c *gin.Context) {
 	Logger("INFO", "sample_server", "GET", "GetAllCustomer", "Request Function", "")
 	Logger("DEBUG", "sample_server", "GET", "GetAllCustomer", "path="+c.Request.RequestURI, "")
 
-	customers := []Customer{}
+	customers := []*Customer{}
 
-	h.DB.Find(&customers)
+	// cursor, _ := h.Collection.Find(context.TODO(), &customers)
+
+	// fmt.Println(cursor)
+	// h.DB.Find(&customers)
+
+    cur, err := h.Collection.Find(context.TODO(), bson.M{})
+    if err != nil {
+        log.Fatal("Error on Finding all the documents", err)
+    }
+    for cur.Next(context.TODO()) {
+        var customer Customer
+        err = cur.Decode(&customer)
+        if err != nil {
+            log.Fatal("Error on Decoding the document", err)
+        }
+        customers = append(customers, &customer)
+    }
 
 	Logger("INFO", "sample_server", "GET", "GetAllCustomer", "Request Success", "200")
 	c.JSON(http.StatusOK, customers)
@@ -187,16 +280,16 @@ func (h *CustomerHandler) GetCustomer(c *gin.Context) {
 	Logger("DEBUG", "sample_server", "GET", "GetCustomer", "path="+c.Request.RequestURI, "")
 
 
-	id := c.Param("id")
+	// id := c.Param("id")
 	customer := Customer{}
 
-	if err := h.DB.Find(&customer, id).Error; err != nil {
-		Msg := "Msg='CodeStarus:404 Not Found id:"+id+" on Database Error: "+err.Error()+"'"// err.Error() conv to string
-		Logger("ERROR", "sample_server", "GET", "GetCustomer", "DB Not Found id:"+id+" on Database Error: "+err.Error(), "404")
+	// if err := h.DB.Find(&customer, id).Error; err != nil {
+	// 	Msg := "Msg='CodeStarus:404 Not Found id:"+id+" on Database Error: "+err.Error()+"'"// err.Error() conv to string
+	// 	Logger("ERROR", "sample_server", "GET", "GetCustomer", "DB Not Found id:"+id+" on Database Error: "+err.Error(), "404")
 
-		c.JSON(http.StatusNotFound,Msg)
-		return
-	}
+	// 	c.JSON(http.StatusNotFound,Msg)
+	// 	return
+	// }
 
 	Logger("INFO", "sample_server", "GET", "GetCustomer", "Request Success", "200")
 	c.JSON(http.StatusOK, customer)
@@ -208,6 +301,7 @@ func (h *CustomerHandler) SaveCustomer(c *gin.Context) {
 
 	customer := Customer{}
 
+
 	if err := c.ShouldBindJSON(&customer); err != nil {
 		Msg := "Msg='CodeStarus:400 BadRequest "+err.Error()+"'"// err.Error() conv to string
 		Logger("ERROR", "sample_server", "POST", "SaveCustomer", "BadRequest "+err.Error(), "400")
@@ -216,12 +310,15 @@ func (h *CustomerHandler) SaveCustomer(c *gin.Context) {
 		return
 	}
 
-	if err := h.DB.Save(&customer).Error; err != nil {
+	insertResult, err := h.Collection.InsertOne(context.TODO(), customer)
+	if err != nil {
 		Msg := "Msg='Insert Database Fail Error: "+err.Error()+"'"// err.Error() conv to string
 		Logger("ERROR", "sample_server", "POST", "SaveCustomer", "Insert Database Fail Error: "+err.Error(), "400")
 
 		c.JSON(http.StatusBadRequest,Msg)
 	}
+	fmt.Println("Inserted a single document: ", insertResult.InsertedID)
+
 
 	Logger("INFO", "sample_server", "POST", "SaveCustomer", "Request Success", "200")
 
@@ -234,15 +331,15 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	Logger("INFO", "sample_server", "PUT", "UpdateCustomer", "Request Function", "")
 	Logger("DEBUG", "sample_server", "PUT", "UpdateCustomer", "path="+c.Request.RequestURI, "")
 
-	id := c.Param("id")
+	// id := c.Param("id")
 	customer := Customer{}
 
-	if err := h.DB.Find(&customer, id).Error; err != nil {
-		Msg := "Msg='CodeStarus:404 Not Found id:"+id+" on Database Error: "+err.Error()+"'"// err.Error() conv to string
-		Logger("ERROR", "sample_server", "PUT", "UpdateCustomer", "DB Not Found id:"+id+" on Database Error: "+err.Error(), "404")
-		c.JSON(http.StatusNotFound,Msg)
-		return
-	}
+	// if err := h.DB.Find(&customer, id).Error; err != nil {
+	// 	Msg := "Msg='CodeStarus:404 Not Found id:"+id+" on Database Error: "+err.Error()+"'"// err.Error() conv to string
+	// 	Logger("ERROR", "sample_server", "PUT", "UpdateCustomer", "DB Not Found id:"+id+" on Database Error: "+err.Error(), "404")
+	// 	c.JSON(http.StatusNotFound,Msg)
+	// 	return
+	// }
 
 	if err := c.ShouldBindJSON(&customer); err != nil {
 		Msg := "Msg='CodeStarus:400 BadRequest "+err.Error()+"'"// err.Error() conv to string
@@ -252,13 +349,13 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 		return
 	}
 
-	if err := h.DB.Save(&customer).Error; err != nil {
-		Msg := "Msg='Insert Database Fail Error: "+err.Error()+"'"// err.Error() conv to string
-		Logger("ERROR", "sample_server", "PUT", "UpdateCustomer", "Insert Database Fail Error: "+err.Error(), "400")
+	// if err := h.DB.Save(&customer).Error; err != nil {
+	// 	Msg := "Msg='Insert Database Fail Error: "+err.Error()+"'"// err.Error() conv to string
+	// 	Logger("ERROR", "sample_server", "PUT", "UpdateCustomer", "Insert Database Fail Error: "+err.Error(), "400")
 
-		c.JSON(http.StatusBadRequest,Msg)
-		return
-	}
+	// 	c.JSON(http.StatusBadRequest,Msg)
+	// 	return
+	// }
 
 	Logger("INFO", "sample_server", "PUT", "UpdateCustomer", "Request Success", "200")
 	c.JSON(http.StatusOK, customer)
@@ -270,24 +367,24 @@ func (h *CustomerHandler) DeleteCustomer(c *gin.Context) {
 	Logger("INFO", "sample_server", "DELETE", "DeleteCustomer", "Request Function", "")
 	Logger("DEBUG", "sample_server", "DELETE", "DeleteCustomer", "path="+c.Request.RequestURI, "")
 
-	id := c.Param("id")
-	customer := Customer{}
+	// id := c.Param("id")
+	// customer := Customer{}
 
-	if err := h.DB.Find(&customer, id).Error; err != nil {
-		Msg := "Msg='CodeStarus:404 Not Found id:"+id+" on Database Error: "+err.Error()+"'"// err.Error() conv to string
-		Logger("ERROR", "sample_server", "DELETE", "DeleteCustomer", "DB Not Found id:"+id+" on Database Error: "+err.Error(), "404")
+	// if err := h.DB.Find(&customer, id).Error; err != nil {
+	// 	Msg := "Msg='CodeStarus:404 Not Found id:"+id+" on Database Error: "+err.Error()+"'"// err.Error() conv to string
+	// 	Logger("ERROR", "sample_server", "DELETE", "DeleteCustomer", "DB Not Found id:"+id+" on Database Error: "+err.Error(), "404")
 
-		c.JSON(http.StatusNotFound,Msg)
-		return
-	}
+	// 	c.JSON(http.StatusNotFound,Msg)
+	// 	return
+	// }
 
-	if err := h.DB.Delete(&customer).Error; err != nil {
-		Msg := "Msg='Delete Database Fail Error: "+err.Error()+"'"// err.Error() conv to string
-		Logger("ERROR", "sample_server", "DELETE", "DeleteCustomer", "Delete Database Fail Error: "+err.Error(), "400")
+	// if err := h.DB.Delete(&customer).Error; err != nil {
+	// 	Msg := "Msg='Delete Database Fail Error: "+err.Error()+"'"// err.Error() conv to string
+	// 	Logger("ERROR", "sample_server", "DELETE", "DeleteCustomer", "Delete Database Fail Error: "+err.Error(), "400")
 
-		c.JSON(http.StatusNotFound,Msg)
-		return
-	}
+	// 	c.JSON(http.StatusNotFound,Msg)
+	// 	return
+	// }
 
 	Logger("INFO", "sample_server", "DELETE", "DeleteCustomer", "Request Success", "200")
 	c.Status(http.StatusNoContent)
